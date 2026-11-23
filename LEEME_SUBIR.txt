@@ -1,21 +1,25 @@
-ACTUALIZACIÓN RÁPIDA — A&C SERVICE PRO 2.0
+A&C SERVICE PRO 3.0 — ACTUALIZACIÓN PARA GITHUB PAGES
+====================================================
+1) ANTES DE ACTUALIZAR: abre la app 2.0 -> Ajustes -> Exportar respaldo JSON.
+   Conserva el archivo en tu teléfono o almacenamiento privado.
+2) CIERRA todas las pestañas anteriores de A&C Service Pro. Si hay otra pestaña
+   abierta, la actualización de la base de datos IndexedDB puede bloquearse.
+3) Abre tu repositorio github.com/gamboacesar937-netizen/aire-confort-service-pro
+   y REEMPLAZA los archivos index.html y sw.js de la raíz con los de este ZIP.
+   No crees una subcarpeta nueva para ellos. Confirma los cambios (Commit).
+4) Abre https://gamboacesar937-netizen.github.io/aire-confort-service-pro/
+   y actualiza la página. Puede requerir una segunda carga por el Service Worker.
+5) Comprueba un reporte antiguo, una cotización y una orden nueva.
 
-ANTES: entra a la app 1.0 > Ajustes > Exportar respaldo JSON.
-No subas archivos de respaldo de clientes al repositorio público.
+NOVEDADES: Agenda con calendario, órdenes de trabajo, asignaciones a técnicos,
+directorio local de personal, panel de indicadores, exportación/restauración JSON v3.
 
-1. Descarga este ZIP y extráelo en tu Android.
-2. Abre https://github.com/gamboacesar937-netizen/aire-confort-service-pro
-3. Code > Add file > Upload files.
-4. Sube SOLAMENTE estos 2 archivos a la raíz del repositorio:
-   - index.html (contiene toda la aplicación y el logo provisional)
-   - sw.js (actualiza la versión y permite guardar la página sin conexión)
-5. Confirma reemplazar index.html y sw.js, y toca Commit changes.
-6. Abre la URL habitual, recarga dos veces y revisa que diga VERSIÓN 2.0:
-   https://gamboacesar937-netizen.github.io/aire-confort-service-pro/
-7. Los reportes existentes se conservan si mantienes el mismo sitio y navegador.
-   Si no aparecen, no borres los datos: importa el respaldo JSON.
+SEGURIDAD Y ALCANCE: todos los registros siguen guardados localmente en la base
+IndexedDB del mismo navegador y origen. No hay usuarios reales, permisos de acceso,
+sincronización multi-dispositivo ni respaldo automático en la nube. GitHub Pages
+solo publica el software, no almacena tus clientes. El directorio no crea cuentas.
 
-NOTA: El paquete completo incluye estilos, JavaScript e íconos en archivos
-separados y es el recomendado para mantener el proyecto a largo plazo.
-La actualización rápida usa solamente dos archivos para facilitar subir
-la versión desde un teléfono; sigue siendo una PWA, no un APK nativo.
+INTEGRIDAD: el proyecto v3 reutiliza la base 'ayc_service_pro_v1' y migra
+su esquema de v2 a v3, conservando reportes, inventario, cotizaciones y ajustes.
+NO borres los datos de Chrome. Los importes del panel son valores registrados,
+no cobros confirmados, y las cotizaciones no se cuentan como ingresos.
