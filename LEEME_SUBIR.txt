@@ -1,0 +1,21 @@
+ACTUALIZACIÓN RÁPIDA — A&C SERVICE PRO 2.0
+
+ANTES: entra a la app 1.0 > Ajustes > Exportar respaldo JSON.
+No subas archivos de respaldo de clientes al repositorio público.
+
+1. Descarga este ZIP y extráelo en tu Android.
+2. Abre https://github.com/gamboacesar937-netizen/aire-confort-service-pro
+3. Code > Add file > Upload files.
+4. Sube SOLAMENTE estos 2 archivos a la raíz del repositorio:
+   - index.html (contiene toda la aplicación y el logo provisional)
+   - sw.js (actualiza la versión y permite guardar la página sin conexión)
+5. Confirma reemplazar index.html y sw.js, y toca Commit changes.
+6. Abre la URL habitual, recarga dos veces y revisa que diga VERSIÓN 2.0:
+   https://gamboacesar937-netizen.github.io/aire-confort-service-pro/
+7. Los reportes existentes se conservan si mantienes el mismo sitio y navegador.
+   Si no aparecen, no borres los datos: importa el respaldo JSON.
+
+NOTA: El paquete completo incluye estilos, JavaScript e íconos en archivos
+separados y es el recomendado para mantener el proyecto a largo plazo.
+La actualización rápida usa solamente dos archivos para facilitar subir
+la versión desde un teléfono; sigue siendo una PWA, no un APK nativo.
