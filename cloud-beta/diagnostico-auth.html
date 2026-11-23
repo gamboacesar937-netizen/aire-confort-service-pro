@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>A&C Cloud — Diagnóstico Auth</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#164062,#071427 68%);color:#f2f8ff}.wrap{max-width:700px;margin:0 auto;padding:34px 16px 65px}.card{padding:25px;border:1px solid #31516c;background:#0d243c;border-radius:20px;box-shadow:0 12px 42px #0004}.eyebrow{font-size:12px;color:#72dbfb;font-weight:800;letter-spacing:.13em}h1{font-size:clamp(26px,6vw,38px);line-height:1.2;margin:18px 0 14px}p{color:#b7ccde;line-height:1.55}button{width:100%;border:none;border-radius:12px;color:white;background:linear-gradient(95deg,#1677ed,#329cff);padding:16px;font-size:16px;font-weight:750;margin:18px 0;cursor:pointer}.box{background:#132f4b;border:1px solid #325573;border-radius:13px;padding:16px;margin:12px 0}.k{color:#95b1ca;font-size:13px;margin-bottom:7px}.val{font-weight:720;word-break:break-word}.ok{color:#7af0bb}.warn{color:#ffd582}.bad{color:#ffb9b4}pre{font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere;color:#d3e3f1}details{padding:12px 0;border-top:1px solid #2c4b63}summary{color:#78cffa;cursor:pointer}.note{font-size:13px;color:#9fbed2}.hint{background:#192e42;border-left:3px solid #55b9ee;border-radius:9px;padding:13px 15px;line-height:1.45}a{color:#8ed7ff}
+</style>
+</head>
+<body><div class="wrap"><div class="card">
+<div class="eyebrow">A&C SERVICE PRO · CLOUD BETA</div><h1>Diagnóstico de autenticación</h1>
+<p>Comprueba las rutas de <b>Auth</b> y de la API de Supabase sin registrar usuarios, ni enviar contraseñas, ni modificar tablas. Lee <code>config.js</code> desde la misma carpeta.</p>
+<div class="box"><div class="k">Configuración</div><div id="cfg" class="val">Pendiente</div></div>
+<div class="box"><div class="k">Prueba 1: Auth /settings</div><div id="auth" class="val">Pendiente</div></div>
+<div class="box"><div class="k">Prueba 2: API REST (lectura del esquema)</div><div id="rest" class="val">Pendiente</div></div>
+<div class="box"><div class="k">Resultado</div><div id="result" class="val">Preparando…</div></div>
+<button id="run">Comprobar de nuevo</button>
+<details><summary>Detalles técnicos (sin mostrar tu clave)</summary><pre id="details"></pre></details>
+<p class="hint" id="next">Primero revisaremos si Supabase acepta la configuración, sin usar cuentas de usuario.</p>
+<p class="note">Si algo falla, toma captura de esta pantalla. No envíes contraseñas ni claves secretas. Esta página no prueba por sí sola el aislamiento entre empresas.</p>
+</div></div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id), put=(id,msg,style='')=>{const n=$(id);n.textContent=msg;n.className='val '+style};
+const escapePattern=/sb_(?:publishable|secret)_[\w-]+/ig;
+const sanitize=s=>String(s||'').replace(escapePattern,'[clave ocultada]').slice(0,230);
+function freshConfig(){return new Promise((resolve,reject)=>{delete window.AC_CLOUD_CONFIG;const s=document.createElement('script');s.src='./config.js?authcheck='+Date.now();s.onload=()=>{s.remove();resolve(window.AC_CLOUD_CONFIG)};s.onerror=()=>reject(new Error('No pude cargar config.js'));document.head.appendChild(s)})}
+async function check(path,key,url){const con=new AbortController(),timer=setTimeout(()=>con.abort(),12000);try{const r=await fetch(url+path,{method:'GET',headers:{apikey:key,accept:'application/json'},cache:'no-store',signal:con.signal});let raw='';try{raw=(await r.text()).slice(0,1000)}catch{};let j;try{j=JSON.parse(raw)}catch{};let message=j?.msg||j?.message||j?.error_description||j?.error||'';const invalid=/invalid api key|invalid authentication|invalid token|invalid jwt|api key is invalid/i.test(raw);return{status:r.status,ok:r.ok,invalid,message:sanitize(message),cors:false}}catch(e){return{status:0,ok:false,invalid:false,message:sanitize(e?.message||e),cors:true}}finally{clearTimeout(timer)}}
+let busy=false;
+async function run(){if(busy)return;busy=true;$('run').disabled=true;for(const id of ['cfg','auth','rest','result'])put(id,'Comprobando…');$('details').textContent='';let cfg;try{cfg=await freshConfig()}catch(e){put('cfg','No se cargó config.js','bad');put('result',sanitize(e.message),'bad');$('run').disabled=false;busy=false;return}
+const url=String(cfg?.supabaseUrl||'').trim().replace(/\/+$/,'');const key=String(cfg?.supabasePublishableKey||'').trim();const valid=/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)&&key.startsWith('sb_publishable_');if(!valid){put('cfg','URL o publishable key incompleta','bad');put('result','Revisa config.js; no uses una clave secreta','bad');$('run').disabled=false;busy=false;return}
+put('cfg','URL correcta · Clave publicable ('+key.length+' caracteres)','ok');let a=await check('/auth/v1/settings',key,url);let b=await check('/rest/v1/',key,url);
+function display(v){return v.status?'HTTP '+v.status+(v.invalid?' · clave rechazada':v.ok?' · respuesta correcta':' · revisar error'):'Sin respuesta (red o CORS)'}
+put('auth',display(a),a.invalid?'bad':a.ok?'ok':'warn');put('rest',display(b),b.invalid?'bad':b.ok?'ok':'warn');$('details').textContent=`Auth settings: ${display(a)}\nMensaje: ${a.message||'(ninguno)'}\n\nREST: ${display(b)}\nMensaje: ${b.message||'(ninguno)'}\n\nProyecto: ${new URL(url).hostname}\nLongitud publishable key: ${key.length}`;
+if(a.invalid||b.invalid){put('result','Una ruta está rechazando la clave','bad');$('next').textContent='Comprueba que la clave publicable provenga exactamente de este proyecto. No cambies las tablas ni las políticas RLS.'}
+else if(a.ok&&b.ok){put('result','Auth y REST responden con la clave configurada','ok');$('next').textContent='Las rutas responden. Si al registrarte aparece «Invalid API key», el siguiente paso será revisar el error preciso de la llamada de registro en la aplicación, no repetir el SQL.'}
+else{put('result','Respuesta mixta: necesitamos revisar los códigos','warn');$('next').textContent='Comparte una captura donde se vean los códigos HTTP de Auth y REST para identificar el fallo. No hace falta enviar la clave.'}
+$('run').disabled=false;busy=false;}
+$('run').addEventListener('click',run);run();
+</script>
+</body></html>
