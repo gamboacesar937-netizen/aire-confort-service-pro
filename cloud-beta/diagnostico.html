@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071526"><title>Diagnóstico de A&C Cloud</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,Segoe UI,sans-serif}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#17446a 0,#0a2138 38%,#071526 72%);color:#f0f6ff}main{max-width:720px;margin:auto;padding:32px 20px 60px}.eyebrow{letter-spacing:.13em;color:#70d4fc;font-size:.8rem;font-weight:700}.card{background:#0e2742;border:1px solid #2a4d68;border-radius:22px;padding:24px;box-shadow:0 20px 50px #0004}h1{margin:14px 0;font-size:clamp(1.65rem,5vw,2.4rem);line-height:1.15}p{color:#b9ccdc;line-height:1.6}.state{padding:14px 16px;border-radius:12px;background:#173954;border:1px solid #3a6381;font-weight:700;margin:18px 0}.state.ok{border-color:#2d9267;background:#0a3d36}.state.bad{border-color:#e5a24a;background:#47341a}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}.kv{padding:14px;border:1px solid #31516e;border-radius:12px;min-width:0}.kv small{color:#91b0c9;display:block;margin-bottom:6px}.kv b{font-weight:600;word-break:break-all;font-size:.94rem}button{width:100%;background:linear-gradient(90deg,#0d71ee,#38a2fc);border:0;padding:15px;border-radius:12px;color:white;font-size:1rem;font-weight:700;cursor:pointer}details{margin-top:16px;border-top:1px solid #284660;padding-top:16px}summary{cursor:pointer;color:#85d3ff}code{word-break:break-all;color:#dbeafa}#tip{margin-top:16px;font-size:1rem}#tip strong{color:#fff}footer{margin-top:20px;font-size:.85rem;color:#95aabf}.loading{opacity:.8}@media(max-width:500px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main><div class="card"><div class="eyebrow">A&C SERVICE PRO · CLOUD BETA</div><h1>Revisión de conexión a Supabase</h1><p>Este diagnóstico lee <code>config.js</code> de la misma carpeta y verifica si Supabase acepta la clave publicable. No registra cuentas ni modifica datos.</p>
+<div id="status" class="state loading" role="status">Preparando diagnóstico…</div>
+<div class="grid">
+  <div class="kv"><small>Archivo config.js</small><b id="configStatus">Pendiente</b></div>
+  <div class="kv"><small>URL del proyecto</small><b id="project">Pendiente</b></div>
+  <div class="kv"><small>Tipo de clave</small><b id="type">Pendiente</b></div>
+  <div class="kv"><small>Respuesta de Supabase</small><b id="response">Pendiente</b></div>
+</div>
+<button id="again">Repetir comprobación</button>
+<div id="tip" aria-live="polite"></div>
+<details><summary>Detalles técnicos (sin mostrar tu clave)</summary><pre id="details" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre></details>
+<footer>Para esta prueba no utilices contraseñas ni claves <code>sb_secret_</code>. No compartas credenciales de administrador.</footer>
+</div></main>
+<script>
+'use strict';
+const el=id=>document.getElementById(id);
+const setStatus=(s,c='')=>{el('status').textContent=s;el('status').className='state '+c};
+const write=(id,value)=>el(id).textContent=value;
+function loadConfig(){return new Promise((resolve,reject)=>{
+  // Se carga cada vez la configuración publicada y no una copia del navegador.
+  delete window.AC_CLOUD_CONFIG;
+  const s=document.createElement('script');s.src='./config.js?diag='+Date.now();
+  s.onload=()=>{s.remove();resolve(window.AC_CLOUD_CONFIG)};
+  s.onerror=()=>{s.remove();reject(new Error('No se pudo cargar config.js'))};
+  document.head.appendChild(s);
+})}
+let controller;
+async function run(){
+  if(controller)controller.abort(); controller=new AbortController();
+  setStatus('Comprobando configuración y conexión…');write('configStatus','Cargando');write('project','—');write('type','—');write('response','—');el('tip').textContent='';write('details','');
+  let cfg;
+  try{cfg=await loadConfig();write('configStatus','Encontrado')}catch(e){write('configStatus','No encontrado');setStatus('No se encontró config.js','bad');el('tip').textContent='Coloca diagnostico.html en la misma carpeta cloud-beta que config.js.';return}
+  const url=String(cfg?.supabaseUrl||'').trim().replace(/\/+$/,'');const key=String(cfg?.supabasePublishableKey||'').trim();
+  const host=/^https:\/\/([a-z0-9-]+)\.supabase\.co$/i.exec(url);
+  write('project',host?host[1]:url?'URL incorrecta':'Sin URL');write('type',key.startsWith('sb_publishable_')?'Publicable (sb_publishable_)':key.startsWith('eyJ')?'Anon heredada (JWT)':key.startsWith('sb_secret_')?'SECRETA — NO USAR':key?'Formato no reconocido':'Sin clave');
+  if(!host||!key||key.startsWith('sb_secret_')){setStatus('La configuración está incompleta o no es válida','bad');el('tip').textContent='Revisa únicamente supabaseUrl y supabasePublishableKey en config.js. No uses claves secretas.';return}
+  try{
+    const abortAfter=setTimeout(()=>controller.abort(),15000);
+    let response;
+    try{response=await fetch(url+'/auth/v1/health',{headers:{'apikey':key,'accept':'application/json'},cache:'no-store',signal:controller.signal})}
+    finally{clearTimeout(abortAfter)}
+    write('response','HTTP '+response.status);
+    let body='';try{body=(await response.text()).slice(0,350)}catch{}
+    let parsed;try{parsed=JSON.parse(body)}catch{}
+    let errorMessage=String(parsed?.message||parsed?.msg||parsed?.error||'').slice(0,160);
+    // No imprimir la clave, aunque el servidor la devuelva accidentalmente.
+    if(errorMessage.includes(key))errorMessage='[respuesta contenía un valor sensible]';
+    write('details','Estado HTTP: '+response.status+'\nMensaje del servidor: '+(errorMessage||'(ninguno)')+'\nDirección: '+url+'/auth/v1/health'+'\nLongitud de la clave publicable: '+key.length+' caracteres');
+    if(response.ok){setStatus('✓ Supabase aceptó la clave pública','ok');el('tip').innerHTML='<strong>La clave y la URL funcionan.</strong> Si el registro sigue fallando, revisaremos la aplicación o la configuración de Auth; no es necesario cambiar la clave.'}
+    else if(response.status===401||/invalid api key/i.test(body)){setStatus('✕ Supabase rechazó la clave pública','bad');el('tip').innerHTML='<strong>El servidor respondió “Invalid API key”.</strong> Copia juntos la URL y la clave publicable desde el botón Connect de este mismo proyecto; confirma que el proyecto mostrado sea AC-Service-Pro-Cloud. No modifiques las tablas.'}
+    else{setStatus('Supabase respondió, pero con un error HTTP '+response.status,'bad');el('tip').textContent='Comparte una captura de este resultado (sin credenciales) para revisar la respuesta específica.'}
+  }catch(e){write('response','Sin respuesta');write('details','Error de conexión: '+String(e.message||e));setStatus('No se logró contactar Supabase','bad');el('tip').textContent='Comprueba internet y que la URL sea la de tu proyecto. Si hay bloqueo de red/CORS, esta pantalla también lo indicará.'}
+}
+el('again').addEventListener('click',run);run();
+</script>
+</body>
+</html>
